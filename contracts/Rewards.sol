@@ -16,17 +16,8 @@ contract RewardManager is Ownable, Pausable {
     mapping(address => uint256) public totalRewardBalance;
     mapping(address => mapping(bytes3 => uint256)) public rewardBalance;
 
-    event AdminAdded(address indexed admin);
-    event AdminRemoved(address indexed admin);
-
-    event RewardTypeAdded(bytes3 indexed rewardId);
-    event RewardTypeRemoved(bytes3 indexed rewardId);
-
-    event MinClaimAmountUpdated(uint256 newAmount);
-
-    event RewardBatchAdded(bytes3 indexed rewardId, address indexed user, string gameLabel, uint256 amount);
+    event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 indexed amount);
     event RewardsClaimed(address indexed user, uint256 amount);
-    event Withdrawn(address indexed to, uint256 amount);
 
     modifier onlyAdmin() {
         require(admins[msg.sender], "not admin");
@@ -49,31 +40,26 @@ contract RewardManager is Ownable, Pausable {
     function addAdmin(address _admin) external onlyOwner {
         require(!admins[_admin], "already admin");
         admins[_admin] = true;
-        emit AdminAdded(_admin);
     }
 
     function removeAdmin(address _admin) external onlyOwner {
         require(admins[_admin], "not admin");
         admins[_admin] = false;
-        emit AdminRemoved(_admin);
     }
 
     function addRewardType(bytes3 _rewardId) external onlyAdmin {
         require(!actualRewards[_rewardId], "exists");
         actualRewards[_rewardId] = true;
         actualRewardsList.push(_rewardId);
-        emit RewardTypeAdded(_rewardId);
     }
 
     function removeRewardType(bytes3 _rewardId) external onlyAdmin {
         require(actualRewards[_rewardId], "not exists");
         actualRewards[_rewardId] = false;
-        emit RewardTypeRemoved(_rewardId);
     }
 
     function setMinClaimAmount(uint256 _amount) external onlyAdmin {
         minClaimAmount = _amount;
-        emit MinClaimAmountUpdated(_amount);
     }
 
     function addRewardBatch(RewardInput[] calldata _batches) external onlyAdmin {
@@ -82,7 +68,7 @@ contract RewardManager is Ownable, Pausable {
             require(actualRewards[r.rewardId], "invalid reward");
             totalRewardBalance[r.user] += r.amount;
             rewardBalance[r.user][r.rewardId] += r.amount;
-            emit RewardBatchAdded(r.rewardId, r.user, r.gameLabel, r.amount);
+            emit RewardAdded(r.rewardId, r.user, r.gameLabel, r.amount);
         }
     }
 
@@ -107,7 +93,6 @@ contract RewardManager is Ownable, Pausable {
         uint256 balance = address(this).balance;
         require(balance > 0, "empty");
         _to.transfer(balance);
-        emit Withdrawn(_to, balance);
     }
 
     function pause() external onlyOwner {
