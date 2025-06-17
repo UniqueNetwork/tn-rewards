@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract RewardManager is Ownable, Pausable {
     bytes3[] public actualRewardsList;
@@ -16,7 +16,7 @@ contract RewardManager is Ownable, Pausable {
     mapping(address => uint256) public totalRewardBalance;
     mapping(address => mapping(bytes3 => uint256)) public rewardBalance;
 
-    event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 indexed amount);
+    event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
 
     modifier onlyAdmin() {
@@ -32,7 +32,7 @@ contract RewardManager is Ownable, Pausable {
         uint256 amount;
     }
 
-    constructor(uint256 _minClaimAmount) {
+    constructor(uint256 _minClaimAmount) Ownable(msg.sender) {
         admins[msg.sender] = true;
         minClaimAmount = _minClaimAmount;
     }
