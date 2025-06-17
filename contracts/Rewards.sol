@@ -9,12 +9,8 @@ contract RewardManager is Ownable, Pausable {
     mapping(bytes3 => bool) public actualRewards;
     mapping(address => bool) public admins;
 
-    uint256 public minClaimAmount;
-
-
-    //can store eth mirror address?
     mapping(address => uint256) public totalRewardBalance;
-    mapping(address => mapping(bytes3 => uint256)) public rewardBalance;
+    uint256 public minClaimAmount;
 
     event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
@@ -26,7 +22,6 @@ contract RewardManager is Ownable, Pausable {
 
     struct RewardInput {
         bytes3 rewardId;
-
         address user;
         string gameLabel;
         uint256 amount;
@@ -62,37 +57,32 @@ contract RewardManager is Ownable, Pausable {
         minClaimAmount = _amount;
     }
 
-    function addRewardBatch(RewardInput[] calldata _batches) external onlyAdmin {
+    function addRewardBatch(RewardInput[] calldata _batches) external onlyAdmin whenNotPaused {
         for (uint256 i = 0; i < _batches.length; ++i) {
             RewardInput calldata r = _batches[i];
             require(actualRewards[r.rewardId], "invalid reward");
             totalRewardBalance[r.user] += r.amount;
-            rewardBalance[r.user][r.rewardId] += r.amount;
             emit RewardAdded(r.rewardId, r.user, r.gameLabel, r.amount);
         }
     }
 
-    function claimRewardsAll() external {
+    function claimRewardsAll() external whenNotPaused {
         uint256 amount = totalRewardBalance[msg.sender];
         require(amount >= minClaimAmount, "below minimum");
 
-        // TO DO check need address convertation ?  
         totalRewardBalance[msg.sender] = 0;
 
+        (bool sent, ) = payable(msg.sender).call{value: amount}("");
+        require(sent, "Failed to send Ether");
 
-
-        for (uint256 i = 0; i < actualRewardsList.length; ++i) {
-            bytes3 id = actualRewardsList[i];
-            rewardBalance[msg.sender][id] = 0;
-        }
-        payable(msg.sender).transfer(amount);
         emit RewardsClaimed(msg.sender, amount);
     }
 
     function withdrawAll(address payable _to) external onlyOwner {
         uint256 balance = address(this).balance;
         require(balance > 0, "empty");
-        _to.transfer(balance);
+        (bool sent, ) = _to.call{value: balance}("");
+        require(sent, "Failed to send Ether");
     }
 
     function pause() external onlyOwner {
@@ -104,4 +94,3 @@ contract RewardManager is Ownable, Pausable {
     }
     receive() external payable {}
 }
-
