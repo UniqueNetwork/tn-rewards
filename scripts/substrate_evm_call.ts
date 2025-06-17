@@ -28,7 +28,7 @@ async function main() {
   // --- 2. Contract deploy ---
 
   console.log("\nDeploying RewardManager contract...");
-  const minClaim = ethers.parseEther("0.01");
+  const minClaim = ethers.parseEther("1");
   const Factory = await ethers.getContractFactory("RewardManager", admin);
   const rewardManagerAbiString = Factory.interface.formatJson();
 
@@ -42,17 +42,12 @@ async function main() {
   const hasSponsor = await contractHelpers.hasSponsor(rm.getAddress());
   console.log("Self sponsoring enabled: ", hasSponsor); // true
 
-  const rewardAmount = ethers.parseEther("0.1");
+  const rewardAmount = ethers.parseEther("1");
   const feeData = await ethers.provider.getFeeData();
 
-  await admin.sendTransaction({
-    to: contractAddress,
-    value: rewardAmount,
-    type: 0,
-    gasPrice: feeData.gasPrice,
-  });
-
   const rewardId = "0x414141";
+  await rm.addRewardType(rewardId);
+
   console.log(userMirroredAddress, "userMirroredAddress");
 
   await (
