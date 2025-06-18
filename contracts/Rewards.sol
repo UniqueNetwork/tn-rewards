@@ -20,7 +20,6 @@ contract RewardManager is Ownable, Pausable {
     }
 
     struct RewardInput {
-        bytes3 rewardId;
         address user;
         string gameLabel;
         uint256 amount;
@@ -55,12 +54,15 @@ contract RewardManager is Ownable, Pausable {
         minClaimAmount = _amount;
     }
 
-    function addRewardBatch(RewardInput[] calldata _batches) external onlyAdmin whenNotPaused {
+    function addRewardBatch(RewardInput[] calldata _batches, bytes3 _rewardId ) external onlyAdmin whenNotPaused {
+
+        require(actualRewards[_rewardId], "invalid reward");
         for (uint256 i = 0; i < _batches.length; ++i) {
             RewardInput calldata r = _batches[i];
-            require(actualRewards[r.rewardId], "invalid reward");
+
             totalRewardBalance[r.user] += r.amount;
-            emit RewardAdded(r.rewardId, r.user, r.gameLabel, r.amount);
+            
+            emit RewardAdded(_rewardId, r.user, r.gameLabel, r.amount);
         }
     }
 
