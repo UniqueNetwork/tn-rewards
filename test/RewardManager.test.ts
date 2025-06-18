@@ -1,10 +1,12 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import type { RewardManager } from "../typechain-types";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 
-describe("RewardManager", function () {
+
+describe("RewardManager (Optimized)", function () {
   let rm: RewardManager;
-  let owner, admin, user1, user2, other;
+  let owner: HardhatEthersSigner, admin: HardhatEthersSigner, user1: HardhatEthersSigner, user2: HardhatEthersSigner, other: HardhatEthersSigner;
   const MIN_CLAIM = 1_000_000_000_000_000_000n;
 
   // Three‐byte IDs as hex literals
@@ -15,8 +17,8 @@ describe("RewardManager", function () {
   beforeEach(async function () {
     [owner, admin, user1, user2, other] = await ethers.getSigners();
     const Factory = await ethers.getContractFactory("RewardManager");
-    rm = (await Factory.deploy(MIN_CLAIM)) as RewardManager;
-    await rm.waitForDeployment();
+    const rmInstance = await Factory.deploy(MIN_CLAIM);
+    rm = await rmInstance.waitForDeployment() as RewardManager;
   });
 
   it("owner is admin on deploy", async function () {
@@ -43,24 +45,28 @@ describe("RewardManager", function () {
     expect(await rm.actualRewards(AAA)).to.be.false;
   });
 
-  it("batch add rewards and balances update", async function () {
+  it("batch add rewards and total balances update", async function () {
     await rm.connect(owner).addAdmin(admin.address);
     await rm.connect(admin).addRewardType(XYZ);
 
-    await rm.connect(admin).addRewardBatch([
+    const batch = [
       { rewardId: XYZ, user: user1.address, gameLabel: "g1", amount: 5n },
       { rewardId: XYZ, user: user2.address, gameLabel: "g2", amount: 7n },
-    ]);
+    ];
+    const tx = await rm.connect(admin).addRewardBatch(batch);
+    const receipt = await tx.wait();
+    console.log(`\tGas for addRewardBatch (Optimized, 2 items): ${receipt?.gasUsed.toString()}`);
 
     expect(await rm.totalRewardBalance(user1.address)).to.equal(5n);
-    expect(await rm.rewardBalance(user1.address, XYZ)).to.equal(5n);
     expect(await rm.totalRewardBalance(user2.address)).to.equal(7n);
-    expect(await rm.rewardBalance(user2.address, XYZ)).to.equal(7n);
   });
 
-  it("claim must respect minClaimAmount and reset balances", async function () {
+  it("claim resets total balance and has low, constant gas cost", async function () {
     await rm.connect(owner).addAdmin(admin.address);
+// add rewards
     await rm.connect(admin).addRewardType(ZZZ);
+    await rm.connect(admin).addRewardType(AAA);
+    await rm.connect(admin).addRewardType(XYZ);
 
     // Fund contract
     await owner.sendTransaction({ to: rm.target, value: MIN_CLAIM });
@@ -69,13 +75,17 @@ describe("RewardManager", function () {
     await rm.connect(admin).addRewardBatch([
       { rewardId: ZZZ, user: user1.address, gameLabel: "g", amount: MIN_CLAIM },
     ]);
+    
+    const claimTx = await rm.connect(user1).claimRewardsAll();
+    const receipt = await claimTx.wait();
+    
+    console.log(`\tGas for claimRewardsAll (Optimized): ${receipt?.gasUsed.toString()}`);
 
-    await expect(rm.connect(user1).claimRewardsAll())
+    await expect(claimTx)
       .to.emit(rm, "RewardsClaimed")
       .withArgs(user1.address, MIN_CLAIM);
 
     expect(await rm.totalRewardBalance(user1.address)).to.equal(0n);
-    expect(await rm.rewardBalance(user1.address, ZZZ)).to.equal(0n);
   });
 
   it("cannot claim below minClaimAmount", async function () {

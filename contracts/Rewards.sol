@@ -73,7 +73,7 @@ contract RewardManager is Ownable, Pausable {
         totalRewardBalance[msg.sender] = 0;
 
         (bool sent, ) = payable(msg.sender).call{value: amount}("");
-        require(sent, "Failed to send Ether");
+        require(sent, "Failed to claim rewards");
 
         emit RewardsClaimed(msg.sender, amount);
     }
@@ -82,7 +82,7 @@ contract RewardManager is Ownable, Pausable {
         uint256 balance = address(this).balance;
         require(balance > 0, "empty");
         (bool sent, ) = _to.call{value: balance}("");
-        require(sent, "Failed to send Ether");
+        require(sent, "Failed to withdraw ALL");
     }
 
     function pause() external onlyOwner {
