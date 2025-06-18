@@ -3,7 +3,6 @@ import { UniqueChain } from "@unique-nft/sdk";
 import { Keyring } from "@polkadot/keyring";
 import { Address } from "@unique-nft/utils";
 import { RewardManager } from "../typechain-types";
-import "dotenv/config"; // Убедитесь, что dotenv установлен и настроен
 import { mnemonicGenerate } from "@polkadot/util-crypto";
 import { ContractHelpersFactory } from "@unique-nft/solidity-interfaces";
 

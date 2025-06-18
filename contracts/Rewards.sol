@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract RewardManager is Ownable, Pausable {
-    bytes3[] public actualRewardsList;
     mapping(bytes3 => bool) public actualRewards;
     mapping(address => bool) public admins;
 
@@ -45,7 +44,6 @@ contract RewardManager is Ownable, Pausable {
     function addRewardType(bytes3 _rewardId) external onlyAdmin {
         require(!actualRewards[_rewardId], "exists");
         actualRewards[_rewardId] = true;
-        actualRewardsList.push(_rewardId);
     }
 
     function removeRewardType(bytes3 _rewardId) external onlyAdmin {
