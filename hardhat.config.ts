@@ -1,6 +1,9 @@
 import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox-viem";
-import env from "./utils/env";
+import dotenv from "dotenv";
+dotenv.config();
+
+import "./tasks/deploy";
 
 const config: HardhatUserConfig = {
   solidity: "0.8.20",
@@ -8,11 +11,13 @@ const config: HardhatUserConfig = {
     unique: {
       url: "https://ws.unique.network",
       chainId: 8880,
+      accounts: [process.env.PRODUCTION_PRIVATE_KEY!],
     },
-  },
-  mocha: {
-    timeout: 1000000,
-    require: ["./utils/logBalances.ts"],
+    devnode: {
+      url: "https://rpc.unique.network",
+      chainId: 8880,
+      accounts: [process.env.PRODUCTION_PRIVATE_KEY!],
+    }
   },
 };
 

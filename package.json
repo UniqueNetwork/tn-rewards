@@ -1,8 +1,7 @@
 {
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
-    "test:hh": "hardhat test --no-compile --config ./hardhat.config.ts"
+    "test": "hardhat test --config ./hardhat.test.config.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.0",

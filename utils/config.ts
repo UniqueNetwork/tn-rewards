@@ -26,7 +26,7 @@ const getConfig = (): Config => {
     return configInstance;
   }
 
-  const { MNEMONIC, DEV_RPC_URL, DEV_CHAIN_ID } = env;
+  const { DEV_MNEMONIC, DEV_RPC_URL, DEV_CHAIN_ID } = env;
 
   // Create custom chain based on environment
   const customChain = defineChain({
@@ -58,11 +58,11 @@ const getConfig = (): Config => {
   });
 
   // Create accounts from mnemonic
-  const ownerAccount = mnemonicToAccount(MNEMONIC);
+  const ownerAccount = mnemonicToAccount(DEV_MNEMONIC);
   
   // Derive other accounts from the same mnemonic
-  const otherAccount = mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/1" });
-  const adminAccount = mnemonicToAccount(MNEMONIC, { path: "m/44'/60'/0'/0/2" });
+  const otherAccount = mnemonicToAccount(DEV_MNEMONIC, { path: "m/44'/60'/0'/0/1" });
+  const adminAccount = mnemonicToAccount(DEV_MNEMONIC, { path: "m/44'/60'/0'/0/2" });
 
   // Create random accounts for testing
   const user1Account = privateKeyToAccount(generatePrivateKey());
