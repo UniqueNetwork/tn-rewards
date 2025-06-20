@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract RewardManager is Ownable, Pausable {
-    mapping(bytes3 => bool) public actualRewards;
-    mapping(address => bool) public admins;
+    mapping(bytes3 => bool) private s_actualRewards;
+    mapping(address => bool) private s_isAdmin;
 
-    mapping(address => uint256) public totalRewardBalance;
-    uint256 public minClaimAmount;
+    mapping(address => uint256) private s_totalRewardBalance;
+    uint256 public s_minClaimAmount;
 
     event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 amount);
     event RewardsClaimed(address indexed user, uint256 amount);
 
     modifier onlyAdmin() {
-        require(admins[msg.sender], "not admin");
+        require(s_isAdmin[msg.sender], "not admin");
         _;
     }
 
@@ -26,51 +26,67 @@ contract RewardManager is Ownable, Pausable {
     }
 
     constructor(uint256 _minClaimAmount) Ownable(msg.sender) {
-        admins[msg.sender] = true;
-        minClaimAmount = _minClaimAmount;
+        s_isAdmin[msg.sender] = true;
+        s_minClaimAmount = _minClaimAmount;
+    }
+
+    function isAdmin(address _admin) external view returns (bool) {
+        return s_isAdmin[_admin];
+    }
+
+    function isActualReward(bytes3 _rewardId) external view returns (bool) {
+        return s_actualRewards[_rewardId];
+    }
+
+    function totalRewardBalance(address _user) external view returns (uint256) {
+        return s_totalRewardBalance[_user];
+    }
+
+    function minClaimAmount() external view returns (uint256) {
+        return s_minClaimAmount;
     }
 
     function addAdmin(address _admin) external onlyOwner {
-        require(!admins[_admin], "already admin");
-        admins[_admin] = true;
+        require(!s_isAdmin[_admin], "already admin");
+        s_isAdmin[_admin] = true;
     }
 
     function removeAdmin(address _admin) external onlyOwner {
-        require(admins[_admin], "not admin");
-        admins[_admin] = false;
+        require(s_isAdmin[_admin], "not admin");
+        s_isAdmin[_admin] = false;
     }
 
     function addRewardType(bytes3 _rewardId) external onlyAdmin {
-        require(!actualRewards[_rewardId], "exists");
-        actualRewards[_rewardId] = true;
+        require(!s_actualRewards[_rewardId], "exists");
+        s_actualRewards[_rewardId] = true;
     }
 
     function removeRewardType(bytes3 _rewardId) external onlyAdmin {
-        require(actualRewards[_rewardId], "not exists");
-        actualRewards[_rewardId] = false;
+        require(s_actualRewards[_rewardId], "not exists");
+        s_actualRewards[_rewardId] = false;
     }
 
     function setMinClaimAmount(uint256 _amount) external onlyAdmin {
-        minClaimAmount = _amount;
+        s_minClaimAmount = _amount;
     }
 
     function addRewardBatch(RewardInput[] calldata _batches, bytes3 _rewardId ) external onlyAdmin whenNotPaused {
 
-        require(actualRewards[_rewardId], "invalid reward");
+        require(s_actualRewards[_rewardId], "invalid reward");
         for (uint256 i = 0; i < _batches.length; ++i) {
             RewardInput calldata r = _batches[i];
 
-            totalRewardBalance[r.user] += r.amount;
+            s_totalRewardBalance[r.user] += r.amount;
             
             emit RewardAdded(_rewardId, r.user, r.gameLabel, r.amount);
         }
     }
 
     function claimRewardsAll() external whenNotPaused {
-        uint256 amount = totalRewardBalance[msg.sender];
-        require(amount >= minClaimAmount, "below minimum");
+        uint256 amount = s_totalRewardBalance[msg.sender];
+        require(amount >= s_minClaimAmount, "below minimum");
 
-        totalRewardBalance[msg.sender] = 0;
+        s_totalRewardBalance[msg.sender] = 0;
 
         (bool sent, ) = payable(msg.sender).call{value: amount}("");
         require(sent, "Failed to claim rewards");
@@ -92,5 +108,6 @@ contract RewardManager is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
+
     receive() external payable {}
 }
