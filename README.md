@@ -128,3 +128,27 @@ Unique Network allows sponsoring transactions, meaning a dApp can cover the gas 
 Users can interact with the `claimRewardsAll` function through a client-side application using the `@unique-nft/sdk`.
 
 *   **Example Implementation**: A script demonstrating how to call the `claimRewardsAll` function can be found at [substrate_evm_call.ts#L71](https://github.com/UniqueNetwork/tn-rewards/blob/master/scripts/substrate_evm_call.ts#L71).
+
+## Benchmarks
+
+=== FINAL SUMMARY FOR 1000 ACCOUNTS ===
+Gas usage:
+- Total gas used: 69,810,528
+- Average gas per user (first batch): 26,299
+- Average gas per user (second batch): 9,212
+- Average gas per claim: 34,299
+
+Owner spending breakdown:
+- Total owner spending: 130.013895855558163392 ETH (130013895855558163392 wei)
+- Deployment and setup transactions: 1.986582776687629146 ETH (1986582776687629146 wei)
+- Sponsoring addRewardBatch transactions: 66.136043306587477392 ETH (66136043306587477392 wei)
+  * First batch: 48.979020883506546708 ETH (48979020883506546708 wei)
+  * Second batch: 17.157022423080930684 ETH (17157022423080930684 wei)
+- Sponsoring claim transactions: 63.877852548970686 ETH (63877852548970686000 wei)
+- Total rewards distributed: 2000 ETH (2000000000000000000000 wei)
+
+Average cost per user:
+- First batch sponsoring: 0.048979020883506546 ETH (48979020883506546 wei)
+- Second batch sponsoring: 0.01715702242308093 ETH (17157022423080930 wei)
+- Claim sponsoring: 0.063877852548970686 ETH (63877852548970686 wei)
+- Total average cost per user: 0.130013895855558162 ETH (130013895855558162 wei)

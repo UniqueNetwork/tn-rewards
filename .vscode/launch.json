@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Hardhat individual test",
+      "type": "node",
+      "request": "launch",
+      "console": "integratedTerminal",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "hardhat",
+        "test",
+        "--no-compile",
+        "--config",
+        "./hardhat.test.config.ts",
+        "${file}"
+      ]
+    },
+    {
+      "name": "Hardhat Script",
+      "type": "node",
+      "request": "launch",
+      "console": "integratedTerminal",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["hardhat", "run", "--no-compile", "${file}"]
+    }
+  ]
+}
