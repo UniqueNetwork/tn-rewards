@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test --config ./hardhat.test.config.ts"
-  },
+    "test": "hardhat test --config ./hardhat.test.config.ts",
+    "benchmark": "hardhat test --config ./hardhat.test.config.ts --grep 'benchmark'"
+  },  
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^0.15.0",
     "@nomicfoundation/hardhat-ignition-viem": "^0.15.0",

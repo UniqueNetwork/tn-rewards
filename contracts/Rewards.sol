@@ -73,14 +73,20 @@ contract RewardManager is Ownable, Pausable {
     }
 
     function addRewardBatch(RewardInput[] calldata _batches, bytes3 _rewardId ) external onlyAdmin whenNotPaused {
-
         require(s_actualRewards[_rewardId], "invalid reward");
-        for (uint256 i = 0; i < _batches.length; ++i) {
+        
+        uint256 batchesLength = _batches.length;
+
+        for (uint256 i = 0; i < batchesLength;) {
             RewardInput calldata r = _batches[i];
 
             s_totalRewardBalance[r.user] += r.amount;
             
             emit RewardAdded(_rewardId, r.user, r.gameLabel, r.amount);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
