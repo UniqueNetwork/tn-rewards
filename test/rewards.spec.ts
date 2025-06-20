@@ -111,7 +111,6 @@ describe("RewardManager", function () {
       rewardType: XYZ,
       batch: batch,
     });
-    console.log(`\tGas for addRewardBatch (New, 2 items): ${receipt}`);
 
     expect(await txHelper.totalRewardBalance(user1, rmAddress)).to.equal(5n);
 
@@ -130,8 +129,6 @@ describe("RewardManager", function () {
     const claimTx = await txHelper.connect(randomUser).claimRewardsAll({
       address: rmAddress,
     });
-
-    console.log(`\tGas for claimRewardsAll: ${claimTx.gasUsed}`);
 
     // Check for event emission
     const logs = await publicClient.getLogs({

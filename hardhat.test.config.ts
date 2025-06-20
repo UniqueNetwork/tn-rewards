@@ -7,9 +7,6 @@ const config: HardhatUserConfig = {
     timeout: 1000000,
     require: ["./utils/logBalances.ts"],
   },
-  gasReporter: {
-    enabled: true,
-  },
 };
 
 export default config;

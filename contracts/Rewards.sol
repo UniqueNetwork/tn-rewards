@@ -30,6 +30,8 @@ contract RewardManager is Ownable, Pausable {
         s_minClaimAmount = _minClaimAmount;
     }
 
+    receive() external payable {}
+
     function isAdmin(address _admin) external view returns (bool) {
         return s_isAdmin[_admin];
     }
@@ -108,6 +110,4 @@ contract RewardManager is Ownable, Pausable {
     function unpause() external onlyOwner {
         _unpause();
     }
-
-    receive() external payable {}
 }
