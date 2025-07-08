@@ -225,64 +225,64 @@ const runBenchmark = async (numAccounts: number) => {
   };
 };
 
-before(async () => {
-  console.log("\n=== BENCHMARK TEST SETUP ===");
-
-  // Log initial balances
-  await logBalances(owner, other, admin);
-
-  const ownerInitialBalance = await publicClient.getBalance({
-    address: owner.address,
-  });
-  console.log(`\nOwner initial balance: ${formatBalance(ownerInitialBalance)}`);
-
-  // Deploy contract
-  console.log("\n1. Deploying RewardManager contract...");
-  const receipt = await txHelper.deployRewardManager({
-    minClaimAmount: MIN_CLAIM,
-  });
-  rmAddress = receipt.contractAddress;
-  console.log(`Contract deployed at: ${rmAddress}`);
-
-  // Set sponsoring with owner as sponsor (3rd parameter)
-  console.log("\n2. Setting up sponsoring with owner as sponsor...");
-  await setSponsoring(rmAddress, owner, owner);
-
-  // Add reward types
-  console.log("\n3. Adding reward types...");
-  await txHelper.addRewardType({
-    address: rmAddress,
-    rewardType: XYZ,
-  });
-  await txHelper.addRewardType({
-    address: rmAddress,
-    rewardType: XXX,
-  });
-
-  // Add admin to the contract
-  console.log("\n4. Adding admin...");
-  await txHelper.addAdmin({
-    address: rmAddress,
-    adminAddress: admin.address,
-  });
-
-  const ownerBalanceAfterSetup = await publicClient.getBalance({
-    address: owner.address,
-  });
-  const contractBalance = await publicClient.getBalance({ address: rmAddress });
-  setupCost = ownerInitialBalance - ownerBalanceAfterSetup;
-
-  console.log(`\nSetup complete:`);
-  console.log(
-    `- Owner balance after setup: ${formatBalance(ownerBalanceAfterSetup)}`
-  );
-  console.log(`- Contract balance: ${formatBalance(contractBalance)}`);
-  console.log(
-    `- Setup cost (deployment + sponsoring setup): ${formatBalance(setupCost)}`
-  );
-});
-
 describe("RewardManager Benchmark", function () {
+  before(async () => {
+    console.log("\n=== BENCHMARK TEST SETUP ===");
+
+    // Log initial balances
+    await logBalances(owner, other, admin);
+
+    const ownerInitialBalance = await publicClient.getBalance({
+      address: owner.address,
+    });
+    console.log(`\nOwner initial balance: ${formatBalance(ownerInitialBalance)}`);
+
+    // Deploy contract
+    console.log("\n1. Deploying RewardManager contract...");
+    const receipt = await txHelper.deployRewardManager({
+      minClaimAmount: MIN_CLAIM,
+    });
+    rmAddress = receipt.contractAddress;
+    console.log(`Contract deployed at: ${rmAddress}`);
+
+    // Set sponsoring with owner as sponsor (3rd parameter)
+    console.log("\n2. Setting up sponsoring with owner as sponsor...");
+    await setSponsoring(rmAddress, owner, owner);
+
+    // Add reward types
+    console.log("\n3. Adding reward types...");
+    await txHelper.addRewardType({
+      address: rmAddress,
+      rewardType: XYZ,
+    });
+    await txHelper.addRewardType({
+      address: rmAddress,
+      rewardType: XXX,
+    });
+
+    // Add admin to the contract
+    console.log("\n4. Adding admin...");
+    await txHelper.addAdmin({
+      address: rmAddress,
+      adminAddress: admin.address,
+    });
+
+    const ownerBalanceAfterSetup = await publicClient.getBalance({
+      address: owner.address,
+    });
+    const contractBalance = await publicClient.getBalance({ address: rmAddress });
+    setupCost = ownerInitialBalance - ownerBalanceAfterSetup;
+
+    console.log(`\nSetup complete:`);
+    console.log(
+        `- Owner balance after setup: ${formatBalance(ownerBalanceAfterSetup)}`
+    );
+    console.log(`- Contract balance: ${formatBalance(contractBalance)}`);
+    console.log(
+        `- Setup cost (deployment + sponsoring setup): ${formatBalance(setupCost)}`
+    );
+  });
+
   it("should benchmark 100 rewards with simultaneous claims", async () => {
     await runBenchmark(100);
   });

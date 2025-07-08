@@ -4,6 +4,7 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test --config ./hardhat.test.config.ts",
+    "test2": "hardhat test --config ./hardhat.config.ts --network",
     "benchmark": "hardhat test --config ./hardhat.test.config.ts --grep 'benchmark'"
   },
   "devDependencies": {
@@ -19,7 +20,9 @@
     "@types/mocha": ">=9.1.0",
     "@types/node": ">=18.0.0",
     "@unique-nft/contracts": "^0.1.0",
+    "@unique-nft/schemas": "^2.1.8",
     "@unique-nft/solidity-interfaces": "^1.0.1",
+    "@unique-nft/utils": "^0.3.22",
     "chai": "^4.2.0",
     "dotenv": "^16.5.0",
     "hardhat": "^2.24.3",

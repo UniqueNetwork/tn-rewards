@@ -1,7 +1,7 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
-const SoulboundCollectionMinterModule = buildModule("SoulboundCollectionMinter", (m) => {
-    const soulboundCollectionMinter = m.contract("SoulboundCollectionMinter", []);
+const SoulboundCollectionMinterModule = buildModule("SoulboundLevels", (m) => {
+    const soulboundCollectionMinter = m.contract("SoulboundLevels", []);
 
     return { soulboundCollectionMinter };
 });
