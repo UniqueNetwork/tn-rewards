@@ -959,6 +959,13 @@
   dependencies:
     "@types/node" "*"
 
+"@unique-nft/contracts@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@unique-nft/contracts/-/contracts-0.1.0.tgz#9c0a013851b51c0d86aeff457e626033cc0a95e2"
+  integrity sha512-G/2BfWCAvP2vfNthWzYWSC9b2bPG9kac29+qGh2MfJNRxy94+QhWaBYZIN7g90V0vjT/TQdaPJ6mrwjVhik8Vw==
+  dependencies:
+    "@unique-nft/solidity-interfaces" "^1.0.1"
+
 "@unique-nft/solidity-interfaces@^1.0.1":
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/@unique-nft/solidity-interfaces/-/solidity-interfaces-1.0.1.tgz#6ce36c6a39a42d415c80a596172d984654de51ed"
