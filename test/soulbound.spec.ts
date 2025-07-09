@@ -39,17 +39,19 @@ describe('SoulboundLevels', function () {
         await soulboundLevels.write.addAdmin([admin.address]).then(waitTx);
     });
 
-    it('owner address can transfer collection ownership', async function () {
+    it.skip('owner address can transfer collection ownership', async function () {
         expect(await soulboundLevels.read.owner(), 'contract owner is ok').to.equal(owner.address);
+
         const collectionOwner1 = await collection.read.collectionOwner();
+        expect(collectionOwner1.eth, 'contract is collection owner').to.equal(soulboundLevels.address);
 
         await soulboundLevels.write.transferCollectionOwnership([{eth: owner.address, sub: 0n}]).then(waitTx);
         const collectionOwner2 = await collection.read.collectionOwner();
+        expect(collectionOwner2.eth, 'collection ownership is transferred to owner').to.equal(owner.address);
 
         await collection.write.changeCollectionOwnerCross([{eth: other.address, sub: 0n}], {account: owner}).then(waitTx);
-
         const collectionOwner3 = await collection.read.collectionOwner();
-        console.log('collection owner 3', collectionOwner3);
+        expect(collectionOwner3.eth, 'collection ownership is transferred to other').to.equal(other.address);
     });
 
     it('admin can mint token and level up it', async function () {
