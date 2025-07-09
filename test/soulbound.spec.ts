@@ -8,7 +8,7 @@ import {SoulboundLevels$Type} from '../artifacts/contracts/SoulboundLevels.sol/S
 import {UniqueNFT$Type} from '../artifacts/@unique-nft/solidity-interfaces/contracts/UniqueNFT.sol/UniqueNFT';
 import {SchemaTools} from '@unique-nft/schemas';
 
-const {owner, admin, other, user1, user2} = config.accounts;
+const {owner, admin, other, user1, user2, user3} = config.accounts;
 
 const {publicClient} = config;
 
@@ -98,5 +98,25 @@ describe.only('SoulboundLevels', function () {
 
         const tx = soulboundLevels.write.updateTokenLevel([{eth: user2.address, sub: 0n}], {account: other});
         await expect(tx).to.be.rejectedWith(/not admin/i);
+    })
+
+    it('user unable to get second token or transfer existing one', async function () {
+        const isAdmin = await soulboundLevels.read.isAdmin([admin.address]);
+        expect(isAdmin, 'admin has admin role').to.be.true;
+
+        await soulboundLevels.write.createSoulboundTokenCross([{eth: other.address, sub: 0n}], {account: admin}).then(waitTx);
+        const tokenId = await soulboundLevels.read.tokenIdByOwner([{eth: other.address, sub: 0n}]);
+
+        expect(!!tokenId, 'token is created').to.be.true;
+
+        const mintSecondTokenTx = soulboundLevels.write.createSoulboundTokenCross([{eth: other.address, sub: 0n}], {account: admin});
+        await expect(mintSecondTokenTx, 'unable to mint second token').to.be.rejectedWith(/AccountTokenLimitExceeded/i);
+
+        const transferTx = collection.write.transferFromCross([
+            {eth: other.address, sub: 0n},
+            {eth: user3.address, sub: 0n},
+            tokenId,
+        ], {account: other});
+        await expect(transferTx, 'unable to transfer token').to.be.rejectedWith(/TransferNotAllowed/i);
     })
 });
