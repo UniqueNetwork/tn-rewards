@@ -13,43 +13,43 @@ const CONTRACT_BALANCE = parseEther("10");
 const XYZ = stringToHex("XYZ", { size: 3 }) as `0x${string}`; // 0x58595a
 const XXX = stringToHex("XXX", { size: 3 }) as `0x${string}`; // 0x585858
 
-before(async () => {
-  await logBalances(owner, other, admin);
-
-  // Deploy contract using configured walletClient to external chain
-  const receipt = await txHelper.deployRewardManager({
-    minClaimAmount: MIN_CLAIM,
-  });
-
-  rmAddress = receipt.contractAddress;
-
-  // Fund contract to allow for claims
-  await txHelper.fundContract({
-    contractAddress: rmAddress,
-    amount: CONTRACT_BALANCE,
-  });
-
-  // Add admin to the contract
-  await txHelper.addAdmin({
-    address: rmAddress,
-    adminAddress: admin.address,
-  });
-
-  // Add reward type to the contract
-  await txHelper.addRewardType({
-    address: rmAddress,
-    rewardType: XYZ,
-  });
-  await txHelper.addRewardType({
-    address: rmAddress,
-    rewardType: XXX,
-  });
-
-  // Set sponsoring
-  await setSponsoring(rmAddress, owner);
-});
-
 describe("RewardManager", function () {
+  before(async () => {
+    await logBalances(owner, other, admin);
+
+    // Deploy contract using configured walletClient to external chain
+    const receipt = await txHelper.deployRewardManager({
+      minClaimAmount: MIN_CLAIM,
+    });
+
+    rmAddress = receipt.contractAddress;
+
+    // Fund contract to allow for claims
+    await txHelper.fundContract({
+      contractAddress: rmAddress,
+      amount: CONTRACT_BALANCE,
+    });
+
+    // Add admin to the contract
+    await txHelper.addAdmin({
+      address: rmAddress,
+      adminAddress: admin.address,
+    });
+
+    // Add reward type to the contract
+    await txHelper.addRewardType({
+      address: rmAddress,
+      rewardType: XYZ,
+    });
+    await txHelper.addRewardType({
+      address: rmAddress,
+      rewardType: XXX,
+    });
+
+    // Set sponsoring
+    await setSponsoring(rmAddress, owner);
+  });
+
   it("owner is admin on deploy", async () => {
     expect(await txHelper.isAdmin(owner, rmAddress)).to.be.true;
 
