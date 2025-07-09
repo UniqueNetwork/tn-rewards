@@ -27,7 +27,7 @@ const getDecodedToken = async (tokenId: bigint) => {
     return SchemaTools.decode.token(properties)
 }
 
-describe.only('SoulboundLevels', function () {
+describe('SoulboundLevels', function () {
     before(async () => {
         await logBalances(owner, other, admin);
 
