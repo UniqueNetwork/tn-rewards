@@ -7,6 +7,7 @@ import type {GetContractReturnType} from '@nomicfoundation/hardhat-viem/types';
 import {SoulboundLevels$Type} from '../artifacts/contracts/SoulboundLevels.sol/SoulboundLevels';
 import {UniqueNFT$Type} from '../artifacts/@unique-nft/solidity-interfaces/contracts/UniqueNFT.sol/UniqueNFT';
 import {SchemaTools} from '@unique-nft/schemas';
+import {Address} from '@unique-nft/utils/address';
 
 const {owner, admin, other, user1, user2, user3} = config.accounts;
 
@@ -120,5 +121,29 @@ describe('SoulboundLevels', function () {
             tokenId,
         ], {account: other});
         await expect(transferTx, 'unable to transfer token').to.be.rejectedWith(/TransferNotAllowed/i);
+    })
+
+    it('may mint to substrate address', async function () {
+        const isAdmin = await soulboundLevels.read.isAdmin([admin.address]);
+        expect(isAdmin, 'admin has admin role').to.be.true;
+
+        const substrateAddress = Address.mirror.ethereumToSubstrate(user3.address);
+        const substrateAddressAsBigInt = Address.substrate.decode(substrateAddress).bigint;
+        const crossAddress = {
+            eth: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+            sub: substrateAddressAsBigInt,
+        };
+
+        await soulboundLevels.write.createSoulboundTokenCross([crossAddress], {account: admin}).then(waitTx);
+
+        const tokenId = await soulboundLevels.read.tokenIdByOwner([crossAddress]);
+        expect(!!tokenId, 'token is created').to.be.true;
+
+        const token = await getDecodedToken(tokenId);
+        expect(token.image).to.equal("https://picsum.photos/id/0/200/200");
+        expect(token.attributes).to.deep.equal([{trait_type: 'Level', value: "0"}]);
+
+        const ownerByTokenId = await soulboundLevels.read.ownerCrossByTokenId([tokenId]);
+        expect(ownerByTokenId, 'owner by token id is correct').to.deep.equal(crossAddress);
     })
 });
