@@ -21,8 +21,7 @@ contract SoulboundLevels is OwnableWithAdmins, CollectionMinter, TokenMinter, To
     uint public immutable maxLevel = 10;
     string public constant levelTraitType = "Level";
 
-    // mutable variables
-    // mappings
+    // mutable variables, mappings
     mapping(uint => string) public levelToImageUrl;
     mapping(address => bool) private _adminList;
     mapping(address => uint256) public ethTokenOwners;
@@ -65,6 +64,9 @@ contract SoulboundLevels is OwnableWithAdmins, CollectionMinter, TokenMinter, To
             new Property[](0),
             new TokenPropertyPermission[](0)
         );
+
+        UniqueNFT collection = UniqueNFT(collectionAddress);
+        collection.addCollectionAdminCross(CrossAddress(address(this), 0));
     }
 
     function transferCollectionOwnership(CrossAddress memory newOwner) external onlyOwner {
@@ -78,6 +80,11 @@ contract SoulboundLevels is OwnableWithAdmins, CollectionMinter, TokenMinter, To
         }
 
         return substrateTokenOwners[ownerCross.sub];
+    }
+
+    function ownerCrossByTokenId(uint256 tokenId) external view returns (CrossAddress memory) {
+        UniqueNFT collection = UniqueNFT(collectionAddress);
+        return collection.ownerOfCross(tokenId);
     }
 
     function createSoulboundTokenCross(
@@ -131,5 +138,6 @@ contract SoulboundLevels is OwnableWithAdmins, CollectionMinter, TokenMinter, To
         }
 
         tokenIdToLevel[tokenId] = nextLevel;
+        emit SoulboundTokenLevelUpdated(ownerCross.eth, tokenId, nextLevel);
     }
 }

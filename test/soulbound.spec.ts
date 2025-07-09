@@ -8,7 +8,7 @@ import {SoulboundLevels$Type} from '../artifacts/contracts/SoulboundLevels.sol/S
 import {UniqueNFT$Type} from '../artifacts/@unique-nft/solidity-interfaces/contracts/UniqueNFT.sol/UniqueNFT';
 import {SchemaTools} from '@unique-nft/schemas';
 
-const {owner, admin, other} = config.accounts;
+const {owner, admin, other, user1, user2} = config.accounts;
 
 const {publicClient} = config;
 
@@ -19,6 +19,14 @@ const waitTx = (txHash: `0x${string}`) => {
     return publicClient.waitForTransactionReceipt({hash: txHash, confirmations: 1});
 }
 
+const getDecodedToken = async (tokenId: bigint) => {
+    const keys = ['tokenData', 'schemaName', 'schemaVersion'];
+    const rawProperties = await collection.read.properties([tokenId, keys]);
+    const properties = rawProperties.map((p) => ({key: p.key, valueHex: p.value}));
+
+    return SchemaTools.decode.token(properties)
+}
+
 describe.only('SoulboundLevels', function () {
     before(async () => {
         await logBalances(owner, other, admin);
@@ -27,40 +35,68 @@ describe.only('SoulboundLevels', function () {
 
         const collectionAddress = await soulboundLevels.read.collectionAddress();
         collection = await hardhatViem.getContractAt('UniqueNFT', collectionAddress);
+
+        await soulboundLevels.write.addAdmin([admin.address]).then(waitTx);
     });
 
-    it('owner address can transfer ownership', async function () {
+    it('owner address can transfer collection ownership', async function () {
         expect(await soulboundLevels.read.owner(), 'contract owner is ok').to.equal(owner.address);
+        const collectionOwner1 = await collection.read.collectionOwner();
 
-        // todo - failing for now
-        // await soulboundLevels.write.transferCollectionOwnership([{eth: owner.address, sub: 0n}]).then(waitTx);
-        // const collectionOwner = await collection.read.collectionOwner();
-        //
-        // expect(collectionOwner.eth, 'collection owner changed').to.equal(owner.address);
+        await soulboundLevels.write.transferCollectionOwnership([{eth: owner.address, sub: 0n}]).then(waitTx);
+        const collectionOwner2 = await collection.read.collectionOwner();
+
+        await collection.write.changeCollectionOwnerCross([{eth: other.address, sub: 0n}], {account: owner}).then(waitTx);
+
+        const collectionOwner3 = await collection.read.collectionOwner();
+        console.log('collection owner 3', collectionOwner3);
     });
 
     it('admin can mint token and level up it', async function () {
-        await soulboundLevels.write.addAdmin([admin.address]).then(waitTx);
-
         const isAdmin = await soulboundLevels.read.isAdmin([admin.address]);
-        expect(isAdmin, 'admin is added').to.be.true;
+        expect(isAdmin, 'admin has admin role').to.be.true;
 
-        await soulboundLevels.write.createSoulboundTokenCross([{eth: other.address, sub: 0n}]).then(waitTx);
+        await soulboundLevels.write.createSoulboundTokenCross([{eth: user1.address, sub: 0n}], {account: admin}).then(waitTx);
 
-        const tokenId = await soulboundLevels.read.tokenIdByOwner([{eth: other.address, sub: 0n}]);
-
+        const tokenId = await soulboundLevels.read.tokenIdByOwner([{eth: user1.address, sub: 0n}]);
         expect(!!tokenId, 'token is created').to.be.true;
 
-        const initialToken = await collection.read.properties([tokenId, ['tokenData', 'schemaName', 'schemaVersion']]);
-        const initialDecoded = await SchemaTools.decode.token(initialToken.map((p) => ({key: p.key, valueHex: p.value})))
-        expect(initialDecoded.image).to.equal("https://picsum.photos/id/0/200/200");
-        expect(initialDecoded.attributes).to.deep.equal([{trait_type: 'Level', value: "0"}]);
+        const initialToken = await getDecodedToken(tokenId);
+        expect(initialToken.image).to.equal("https://picsum.photos/id/0/200/200");
+        expect(initialToken.attributes).to.deep.equal([{trait_type: 'Level', value: "0"}]);
 
-        await soulboundLevels.write.updateTokenLevel([{eth: other.address, sub: 0n}]).then(waitTx);
+        await soulboundLevels.write.updateTokenLevel([{eth: user1.address, sub: 0n}], {account: admin}).then(waitTx);
 
-        const levelUppedToken = await collection.read.properties([tokenId, ['tokenData', 'schemaName', 'schemaVersion']]);
-        const levelUppedDecoded = await SchemaTools.decode.token(levelUppedToken.map((p) => ({key: p.key, valueHex: p.value})));
-        expect(levelUppedDecoded.image).to.equal("https://picsum.photos/id/1/200/200");
-        expect(levelUppedDecoded.attributes).to.deep.equal([{trait_type: 'Level', value: "1"}]);
+        const levelUppedToken = await getDecodedToken(tokenId);
+        expect(levelUppedToken.image).to.equal("https://picsum.photos/id/1/200/200");
+        expect(levelUppedToken.attributes).to.deep.equal([{trait_type: 'Level', value: "1"}]);
+
+        const ownerByTokenId = await soulboundLevels.read.ownerCrossByTokenId([tokenId]);
+        expect(ownerByTokenId.eth, 'owner by token id is correct').to.equal(user1.address);
+
+        const tokenByOwner = await soulboundLevels.read.tokenIdByOwner([{eth: user1.address, sub: 0n}]);
+        expect(tokenByOwner, 'token by owner is correct').to.equal(tokenId);
     });
+
+    it('non admin cannot mint token', async function () {
+        const isAdmin = await soulboundLevels.read.isAdmin([other.address]);
+        expect(isAdmin, 'other is not admin').to.be.false;
+
+        const tx = soulboundLevels.write.createSoulboundTokenCross([{eth: user2.address, sub: 0n}], {account: other});
+
+        await expect(tx).to.be.rejectedWith(/not admin/i);
+    })
+
+    it('non admin cannot level up token', async function () {
+        const isAdmin = await soulboundLevels.read.isAdmin([admin.address]);
+        expect(isAdmin, 'admin has admin role').to.be.true;
+
+        await soulboundLevels.write.createSoulboundTokenCross([{eth: user2.address, sub: 0n}], {account: admin}).then(waitTx);
+
+        const tokenId = await soulboundLevels.read.tokenIdByOwner([{eth: user2.address, sub: 0n}]);
+        expect(!!tokenId, 'token is created').to.be.true;
+
+        const tx = soulboundLevels.write.updateTokenLevel([{eth: user2.address, sub: 0n}], {account: other});
+        await expect(tx).to.be.rejectedWith(/not admin/i);
+    })
 });
