@@ -7,6 +7,8 @@ import { UniquePrecompiles } from "@unique-nft/contracts/UniquePrecompiles.sol";
 import { CrossAddress, UniqueFungible } from "@unique-nft/solidity-interfaces/contracts/UniqueFungible.sol";
 
 contract RewardManager is Ownable, Pausable, UniquePrecompiles {
+    UniqueFungible private immutable UNQ;
+
     mapping(bytes3 => bool) private s_actualRewards;
     mapping(address => bool) private s_isAdmin;
 
@@ -30,6 +32,7 @@ contract RewardManager is Ownable, Pausable, UniquePrecompiles {
     constructor(uint256 _minClaimAmount) Ownable(msg.sender) {
         s_isAdmin[msg.sender] = true;
         s_minClaimAmount = _minClaimAmount;
+        UNQ = UniqueFungible(COLLECTION_HELPERS.collectionAddress(0));
     }
 
     receive() external payable {}
@@ -93,8 +96,6 @@ contract RewardManager is Ownable, Pausable, UniquePrecompiles {
     }
 
     function claimRewardsAll(uint256 _substratePublicKey) external whenNotPaused {
-        address collectionAddress = COLLECTION_HELPERS.collectionAddress(0);
-
         uint256 amount = s_totalRewardBalance[_substratePublicKey];
         require(amount >= s_minClaimAmount, "below minimum");
 
@@ -102,7 +103,7 @@ contract RewardManager is Ownable, Pausable, UniquePrecompiles {
 
         CrossAddress memory userCross = CrossAddress(address(0), _substratePublicKey);
 
-        (bool sent) = UniqueFungible(collectionAddress).transferCross(userCross, amount);
+        (bool sent) = UNQ.transferCross(userCross, amount);
         require(sent, "Failed to claim rewards");
 
         emit RewardsClaimed(_substratePublicKey, amount);
