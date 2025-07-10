@@ -18,3 +18,5 @@ ignition/deployments/chain-31337
 
 # use yarn
 package-lock.json
+
+.DS_Store

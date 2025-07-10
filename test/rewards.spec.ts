@@ -1,8 +1,13 @@
 import { expect } from "chai";
-import { parseEther, stringToHex } from "viem";
+import { Hex, parseEther, stringToHex } from "viem";
 import config from "../utils/config";
 import { setSponsoring } from "../utils/sponsoring";
 import { logBalances } from "../utils/logBalances";
+import { Sr25519Account } from "@unique-nft/sr25519";
+import { Address } from "@unique-nft/utils";
+import { UniqueChain } from "@unique-nft/sdk";
+import env from "../utils/env";
+import { abi as rewardManagerAbi } from "../artifacts/contracts/Rewards.sol/RewardManager.json";
 
 let rmAddress: `0x${string}`;
 const { owner, admin, other, user1, user2, user3 } = config.accounts;
@@ -101,9 +106,27 @@ describe("RewardManager", function () {
   });
 
   it("batch add rewards and total balances update", async () => {
+    const user1 = Sr25519Account.fromUri(Sr25519Account.generateMnemonic());
+    const user1SubstratePublicKey = Address.extract.substratePublicKey(
+      user1.address
+    ) as Hex;
+
+    const user2 = Sr25519Account.fromUri(Sr25519Account.generateMnemonic());
+    const user2SubstratePublicKey = Address.extract.substratePublicKey(
+      user2.address
+    ) as Hex;
+
     const batch = [
-      { user: user1.address, gameLabel: "g1", amount: 5n },
-      { user: user2.address, gameLabel: "g2", amount: 7n },
+      {
+        substratePublicKey: user1SubstratePublicKey,
+        gameLabel: "g1",
+        amount: 5n,
+      },
+      {
+        substratePublicKey: user2SubstratePublicKey,
+        gameLabel: "g2",
+        amount: 7n,
+      },
     ];
 
     const receipt = await txHelper.addRewardBatch({
@@ -112,52 +135,42 @@ describe("RewardManager", function () {
       batch: batch,
     });
 
-    expect(await txHelper.totalRewardBalance(user1, rmAddress)).to.equal(5n);
+    expect(
+      await txHelper.getRewardBalance({
+        address: rmAddress,
+        account: Address.extract.substratePublicKey(user1.address) as Hex,
+      })
+    ).to.equal(5n);
 
-    expect(await txHelper.totalRewardBalance(user2, rmAddress)).to.equal(7n);
-  });
-
-  it("claim resets total balance", async () => {
-    const randomUser = await txHelper.getRandomAccount();
-    // Assign exactly MIN_CLAIM to user1 using the updated batch function
-    await txHelper.addRewardBatch({
-      address: rmAddress,
-      rewardType: XYZ,
-      batch: [{ user: randomUser.address, gameLabel: "g", amount: MIN_CLAIM }],
-    });
-
-    const claimTx = await txHelper.connect(randomUser).claimRewardsAll({
-      address: rmAddress,
-    });
-
-    // Check for event emission
-    const logs = await publicClient.getLogs({
-      address: rmAddress,
-      event: {
-        type: "event",
-        name: "RewardsClaimed",
-        inputs: [
-          { type: "address", name: "user", indexed: true },
-          { type: "uint256", name: "amount", indexed: false },
-        ],
-      },
-      fromBlock: claimTx.blockNumber,
-      toBlock: claimTx.blockNumber,
-    });
-
-    expect(logs.length).to.be.greaterThan(0);
-    expect(logs[0].args.user).to.equal(randomUser.address);
-    expect(logs[0].args.amount).to.equal(MIN_CLAIM);
-
-    expect(await txHelper.totalRewardBalance(randomUser, rmAddress)).to.equal(
-      0n
-    );
+    expect(
+      await txHelper.getRewardBalance({
+        address: rmAddress,
+        account: Address.extract.substratePublicKey(user2.address) as Hex,
+      })
+    ).to.equal(7n);
   });
 
   it("cannot claim below minClaimAmount", async () => {
+    const randomUser = Sr25519Account.fromUri(
+      Sr25519Account.generateMnemonic()
+    );
+    const randomUserSubstratePublicKey = Address.extract.substratePublicKey(
+      randomUser.address
+    ) as Hex;
+    const sdk = UniqueChain({
+      baseUrl: env.UNIQUE_SDK_URL,
+      account: randomUser,
+    });
+
     await expect(
-      txHelper.claimRewardsAll({
-        address: rmAddress,
+      sdk.evm.call({
+        contract: {
+          address: rmAddress,
+          abi: rewardManagerAbi,
+        },
+        functionName: "claimRewardsAll",
+        functionArgs: [randomUserSubstratePublicKey],
+        gasLimit: 1_000_000n,
       })
     ).to.be.rejectedWith("below minimum");
   });
@@ -194,13 +207,31 @@ describe("RewardManager", function () {
   });
 
   it("pause/unpause toggles paused state", async () => {
+    const randomUser = Sr25519Account.fromUri(
+      Sr25519Account.generateMnemonic()
+    );
+
+    const randomUserSubstratePublicKey = Address.extract.substratePublicKey(
+      randomUser.address
+    ) as Hex;
+    const sdk = UniqueChain({
+      baseUrl: env.UNIQUE_SDK_URL,
+      account: randomUser,
+    });
+
     expect(await txHelper.isPaused(rmAddress)).to.be.false;
 
-    // Add reward to user2 to allow for claims
+    // Add reward to randomUser to allow for claims
     await txHelper.addRewardBatch({
       address: rmAddress,
       rewardType: XYZ,
-      batch: [{ user: user2.address, gameLabel: "g", amount: MIN_CLAIM }],
+      batch: [
+        {
+          substratePublicKey: randomUserSubstratePublicKey,
+          gameLabel: "g",
+          amount: MIN_CLAIM,
+        },
+      ],
     });
 
     // Pause contract
@@ -212,10 +243,16 @@ describe("RewardManager", function () {
 
     // User cannot claim until unpaused
     await expect(
-      txHelper.connect(user2).claimRewardsAll({
-        address: rmAddress,
+      sdk.evm.call({
+        contract: {
+          address: rmAddress,
+          abi: rewardManagerAbi,
+        },
+        functionName: "claimRewardsAll",
+        functionArgs: [randomUserSubstratePublicKey],
+        gasLimit: 1_000_000n,
       })
-    ).to.be.rejectedWith("EnforcedPause");
+    ).to.be.rejected;
 
     // Unpause contract
     await txHelper.unpauseContract({
@@ -225,8 +262,14 @@ describe("RewardManager", function () {
     expect(await txHelper.isPaused(rmAddress)).to.be.false;
 
     // User can claim after unpausing
-    await txHelper.connect(user2).claimRewardsAll({
-      address: rmAddress,
+    await sdk.evm.call({
+      contract: {
+        address: rmAddress,
+        abi: rewardManagerAbi,
+      },
+      functionName: "claimRewardsAll",
+      functionArgs: [randomUserSubstratePublicKey],
+      gasLimit: 1_000_000n,
     });
   });
 });

@@ -1,9 +1,13 @@
 import { expect } from "chai";
-import { parseEther, stringToHex, formatEther } from "viem";
-import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { parseEther, stringToHex, formatEther, Hex } from "viem";
 import config from "../utils/config";
 import { setSponsoring } from "../utils/sponsoring";
 import { logBalances } from "../utils/logBalances";
+import { Sr25519Account } from "@unique-nft/sr25519";
+import { Address } from "@unique-nft/utils";
+import { UniqueChain } from "@unique-nft/sdk";
+import env from "../utils/env";
+import {abi as rewardManagerAbi} from "../artifacts/contracts/Rewards.sol/RewardManager.json";
 
 let rmAddress: `0x${string}`;
 const { owner, admin, other } = config.accounts;
@@ -17,12 +21,11 @@ const XXX = stringToHex("XXX", { size: 3 }) as `0x${string}`; // 0x585858
 // Track setup costs
 let setupCost: bigint = 0n;
 
-// Generate random accounts
+// Generate random substrate accounts
 const generateRandomAccounts = (count: number) => {
   const accounts = [];
   for (let i = 0; i < count; i++) {
-    const privateKey = generatePrivateKey();
-    const account = privateKeyToAccount(privateKey);
+    const account = Sr25519Account.fromUri(Sr25519Account.generateMnemonic());
     accounts.push(account);
   }
   return accounts;
@@ -50,12 +53,12 @@ const runBenchmark = async (numAccounts: number) => {
     address: owner.address,
   });
 
-  // Generate random accounts
+  // Generate random substrate accounts
   const randomAccounts = generateRandomAccounts(numAccounts);
 
   // Create batch data for first reward distribution
   const firstBatch = randomAccounts.map((account, index) => ({
-    user: account.address,
+    substratePublicKey: Address.extract.substratePublicKey(account.address) as Hex,
     gameLabel: `game_${index + 1}`,
     amount: REWARD_PER_USER,
   }));
@@ -80,7 +83,7 @@ const runBenchmark = async (numAccounts: number) => {
 
   // Create batch data for second reward distribution
   const secondBatch = randomAccounts.map((account, index) => ({
-    user: account.address,
+    substratePublicKey: Address.extract.substratePublicKey(account.address) as Hex,
     gameLabel: `game_${index + numAccounts + 1}`,
     amount: REWARD_PER_USER,
   }));
@@ -106,7 +109,10 @@ const runBenchmark = async (numAccounts: number) => {
   // Verify total balances for a few random users
   const sampleUsers = randomAccounts.slice(0, 3);
   for (const user of sampleUsers) {
-    const totalBalance = await txHelper.totalRewardBalance(user, rmAddress);
+    const totalBalance = await txHelper.getRewardBalance({
+      address: rmAddress,
+      account: Address.extract.substratePublicKey(user.address) as Hex,
+    });
     expect(totalBalance).to.equal(REWARD_PER_USER * 2n); // Should have 2 ether total
   }
 
@@ -115,18 +121,22 @@ const runBenchmark = async (numAccounts: number) => {
     address: owner.address,
   });
 
-  const claimPromises = randomAccounts.map((user) =>
-    txHelper.connect(user).claimRewardsAll({
-      address: rmAddress,
-      gas: 1_000_000n,
-    })
-  );
+  const claimPromises = randomAccounts.map((user) => {
+    const sdk = UniqueChain({baseUrl: env.UNIQUE_SDK_URL, account: user});
+    const userSubstratePublicKey = Address.extract.substratePublicKey(user.address) as Hex;
+    
+    return sdk.evm.send({
+      contract: {
+        address: rmAddress,
+        abi: rewardManagerAbi,
+      },
+      functionName: "claimRewardsAll",
+      functionArgs: [userSubstratePublicKey],
+      gasLimit: 1_000_000n,
+    });
+  });
 
   const claimReceipts = await Promise.all(claimPromises);
-  const totalClaimGas = claimReceipts.reduce(
-    (sum, receipt) => sum + receipt.gasUsed,
-    0n
-  );
 
   const ownerBalanceAfterClaims = await publicClient.getBalance({
     address: owner.address,
@@ -136,10 +146,10 @@ const runBenchmark = async (numAccounts: number) => {
 
   // Verify all user balances are reset
   for (const user of randomAccounts) {
-    const userBalanceAfterClaim = await txHelper.totalRewardBalance(
-      user,
-      rmAddress
-    );
+    const userBalanceAfterClaim = await txHelper.getRewardBalance({
+      address: rmAddress,
+      account: Address.extract.substratePublicKey(user.address) as Hex,
+    });
     expect(userBalanceAfterClaim).to.equal(0n);
   }
 
@@ -151,16 +161,11 @@ const runBenchmark = async (numAccounts: number) => {
     address: rmAddress,
   });
 
-  // Calculate total gas used
-  const totalGasUsed =
-    firstBatchReceipt.gasUsed + secondBatchReceipt.gasUsed + totalClaimGas;
-
   // Calculate average gas per user in batches
   const avgGasPerUserFirstBatch =
     firstBatchReceipt.gasUsed / BigInt(numAccounts);
   const avgGasPerUserSecondBatch =
     secondBatchReceipt.gasUsed / BigInt(numAccounts);
-  const avgGasPerClaim = totalClaimGas / BigInt(numAccounts);
 
   // Owner spending breakdown
   const totalOwnerSpent = ownerInitialBalanceForTest - finalOwnerBalance;
@@ -173,14 +178,12 @@ const runBenchmark = async (numAccounts: number) => {
   console.log(`- Contract balance: ${formatBalance(finalContractBalance)}`);
 
   console.log(`\nGas usage:`);
-  console.log(`- Total gas used: ${totalGasUsed.toLocaleString()}`);
   console.log(
     `- Average gas per user (first batch): ${avgGasPerUserFirstBatch.toLocaleString()}`
   );
   console.log(
     `- Average gas per user (second batch): ${avgGasPerUserSecondBatch.toLocaleString()}`
   );
-  console.log(`- Average gas per claim: ${avgGasPerClaim.toLocaleString()}`);
 
   console.log(`\nOwner spending breakdown:`);
   console.log(`- Total owner spending: ${formatBalance(totalOwnerSpent)}`);
@@ -215,11 +218,9 @@ const runBenchmark = async (numAccounts: number) => {
   console.log(`- Total average cost per user: ${formatBalance(avgCostPerUserFirstBatch + avgCostPerUserSecondBatch + avgCostPerUserClaim)}`);
 
   return {
-    totalGasUsed,
     totalOwnerSpent,
     avgGasPerUserFirstBatch,
     avgGasPerUserSecondBatch,
-    avgGasPerClaim,
     totalBatchSponsoringCost,
     claimsSponsoringCost,
   };

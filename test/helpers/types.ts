@@ -1,4 +1,4 @@
-import { Address, TransactionReceipt, WalletClient, PublicClient, Account } from 'viem';
+import { TransactionReceipt, WalletClient, PublicClient, Account, Hex, Address } from 'viem';
 
 export interface Config {
   walletClient: WalletClient;
@@ -14,7 +14,7 @@ export interface Config {
 }
 
 export interface RewardBatchItem {
-  user: Address;
+  substratePublicKey: Hex;
   gameLabel: string;
   amount: bigint;
 }
@@ -24,7 +24,7 @@ export interface DeployContractParams {
 }
 
 export interface ContractWriteParams {
-  address: Address;
+  address: Hex;
   gas?: bigint;
 }
 
@@ -50,6 +50,11 @@ export interface AddRewardBatchParams extends ContractWriteParams {
 }
 
 export interface ClaimRewardsParams extends ContractWriteParams {}
+
+export interface GetRewardBalanceParams {
+  address: Address;
+  account: Hex;
+}
 
 export interface WithdrawAllParams extends ContractWriteParams {
   recipient: Address;
