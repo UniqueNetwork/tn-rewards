@@ -12,6 +12,7 @@ import {
   UnpauseParams,
   FundContractParams,
   DeploymentResult,
+  GetRewardBalanceParams,
 } from "./types";
 import RewardManagerArtifacts from "../../artifacts/contracts/Rewards.sol/RewardManager.json";
 import { PublicClient } from "@nomicfoundation/hardhat-viem/types";
@@ -30,6 +31,15 @@ export class TransactionHelper {
 
   connect(account: Account) {
     return new TransactionHelper(this.walletClient, this.publicClient, account);
+  }
+
+  async getRewardBalance(params: GetRewardBalanceParams): Promise<bigint> {
+    return this.publicClient.readContract({
+      address: params.address,
+      abi: this.REWARD_MANAGER_ABI,
+      functionName: "totalRewardBalance",
+      args: [params.account],
+    }) as Promise<bigint>;
   }
 
   /**
@@ -154,24 +164,6 @@ export class TransactionHelper {
       abi: this.REWARD_MANAGER_ABI,
       functionName: "addRewardBatch",
       args: [params.batch, params.rewardType],
-      account: this.account,
-      gas: params.gas || 300_000n,
-    });
-
-    const hash = await this.walletClient.writeContract(request);
-    return this.publicClient.waitForTransactionReceipt({ hash });
-  }
-
-  /**
-   * Claim all rewards for a user
-   */
-  async claimRewardsAll(
-    params: ClaimRewardsParams
-  ): Promise<TransactionReceipt> {
-    const { request } = await this.publicClient.simulateContract({
-      address: params.address,
-      abi: this.REWARD_MANAGER_ABI,
-      functionName: "claimRewardsAll",
       account: this.account,
       gas: params.gas || 300_000n,
     });

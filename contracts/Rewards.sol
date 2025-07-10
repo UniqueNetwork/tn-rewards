@@ -3,16 +3,18 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import { UniquePrecompiles } from "@unique-nft/contracts/UniquePrecompiles.sol";
+import { CrossAddress, UniqueFungible } from "@unique-nft/solidity-interfaces/contracts/UniqueFungible.sol";
 
-contract RewardManager is Ownable, Pausable {
+contract RewardManager is Ownable, Pausable, UniquePrecompiles {
     mapping(bytes3 => bool) private s_actualRewards;
     mapping(address => bool) private s_isAdmin;
 
-    mapping(address => uint256) private s_totalRewardBalance;
+    mapping(uint256 substratePublicKey => uint256) private s_totalRewardBalance;
     uint256 public s_minClaimAmount;
 
-    event RewardAdded(bytes3 indexed rewardId, address indexed user, string indexed gameLabel, uint256 amount);
-    event RewardsClaimed(address indexed user, uint256 amount);
+    event RewardAdded(bytes3 indexed rewardId, uint256 indexed substratePublicKey, string indexed gameLabel, uint256 amount);
+    event RewardsClaimed(uint256 indexed substratePublicKey, uint256 amount);
 
     modifier onlyAdmin() {
         require(s_isAdmin[msg.sender], "not admin");
@@ -20,7 +22,7 @@ contract RewardManager is Ownable, Pausable {
     }
 
     struct RewardInput {
-        address user;
+        uint256 substratePublicKey;
         string gameLabel;
         uint256 amount;
     }
@@ -40,8 +42,8 @@ contract RewardManager is Ownable, Pausable {
         return s_actualRewards[_rewardId];
     }
 
-    function totalRewardBalance(address _user) external view returns (uint256) {
-        return s_totalRewardBalance[_user];
+    function totalRewardBalance(uint256 _substratePublicKey) external view returns (uint256) {
+        return s_totalRewardBalance[_substratePublicKey];
     }
 
     function minClaimAmount() external view returns (uint256) {
@@ -80,9 +82,9 @@ contract RewardManager is Ownable, Pausable {
         for (uint256 i = 0; i < batchesLength;) {
             RewardInput calldata r = _batches[i];
 
-            s_totalRewardBalance[r.user] += r.amount;
+            s_totalRewardBalance[r.substratePublicKey] += r.amount;
             
-            emit RewardAdded(_rewardId, r.user, r.gameLabel, r.amount);
+            emit RewardAdded(_rewardId, r.substratePublicKey, r.gameLabel, r.amount);
 
             unchecked {
                 ++i;
@@ -90,16 +92,20 @@ contract RewardManager is Ownable, Pausable {
         }
     }
 
-    function claimRewardsAll() external whenNotPaused {
-        uint256 amount = s_totalRewardBalance[msg.sender];
+    function claimRewardsAll(uint256 _substratePublicKey) external whenNotPaused {
+        address collectionAddress = COLLECTION_HELPERS.collectionAddress(0);
+
+        uint256 amount = s_totalRewardBalance[_substratePublicKey];
         require(amount >= s_minClaimAmount, "below minimum");
 
-        s_totalRewardBalance[msg.sender] = 0;
+        s_totalRewardBalance[_substratePublicKey] = 0;
 
-        (bool sent, ) = payable(msg.sender).call{value: amount}("");
+        CrossAddress memory userCross = CrossAddress(address(0), _substratePublicKey);
+
+        (bool sent) = UniqueFungible(collectionAddress).transferCross(userCross, amount);
         require(sent, "Failed to claim rewards");
 
-        emit RewardsClaimed(msg.sender, amount);
+        emit RewardsClaimed(_substratePublicKey, amount);
     }
 
     function withdrawAll(address payable _to) external onlyOwner {

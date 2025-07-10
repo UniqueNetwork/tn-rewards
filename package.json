@@ -32,5 +32,8 @@
     "typescript": "~5.0.4",
     "viem": "^2.7.6"
   },
-  "packageManager": "yarn@1.22.22"
+  "packageManager": "yarn@1.22.22",
+  "dependencies": {
+    "@unique-nft/sdk": "^2.8.1"
+  }
 }
